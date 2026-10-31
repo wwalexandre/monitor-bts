@@ -1,0 +1,34 @@
+name: Monitor ingresso BTS
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # tenta iniciar a cada 30 min; se ja tiver uma rodando, fica na fila
+  workflow_dispatch:          # botao "Run workflow" pra ligar na hora
+
+# So 1 execucao por vez. A proxima espera na fila e assume quando a atual termina.
+concurrency:
+  group: monitor-ingresso
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar Playwright
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Vigiar pagina
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TARGET_URL: https://www.ticketmaster.com.br/event/venda-geral-bts-world-tour-arirang-31-10
+          MAX_MINUTOS: "340"
+        run: python monitor_cloud.py
